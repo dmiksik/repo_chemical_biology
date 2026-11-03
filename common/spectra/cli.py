@@ -20,11 +20,15 @@ def index(record_ids, all_records, sync):
     """Register and index spectra of RECORD_IDS (e.g. records published before spectra indexing).
 
     Files already registered are skipped; to re-index a file, use ``reset`` first.
+    Indexed files without the stored mzML header (indexed by an older version)
+    get it read.
     """
     from invenio_db import db
 
     from .components import register_runs
+    from .models import RunStatus, SpectraRun
     from .service import records_service
+    from .tasks import index_run
 
     record_cls = records_service().record_cls
     if all_records:
@@ -43,6 +47,16 @@ def index(record_ids, all_records, sync):
             else:
                 task.delay(str(run.id))
         click.echo(f"{record_id}: {len(runs)} new run(s): {', '.join(run.file_key for run, _ in runs) or '-'}")
+        without_header = SpectraRun.query.filter_by(
+            record_pid=record_id, status=RunStatus.INDEXED, header=None
+        ).all()
+        for run in without_header:
+            if sync:
+                index_run(str(run.id))
+            else:
+                index_run.delay(str(run.id))
+        if without_header:
+            click.echo(f"{record_id}: reading the header of {len(without_header)} indexed run(s)")
 
 
 @spectra.command("reset")

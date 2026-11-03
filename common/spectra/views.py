@@ -1,6 +1,7 @@
 """REST API for individual spectra.
 
 - ``GET /api/proxi/v0.1/spectra?usi=...&resultType=compact|full`` (PROXI)
+- ``POST /api/proxi/v0.1/spectra?resultType=&format=json|mgf`` with ``{"usis": [...]}`` (batch, extension)
 - ``GET /api/proxi/v0.1/datasets``, ``/api/proxi/v0.1/datasets/<accession or id>`` (PROXI)
 - ``GET /api/dataset/<id>/files/<key>/spectra?ms_level=&page=&size=`` (list)
 - ``GET /api/dataset/<id>/files/<key>/spectra/<scan|index|nativeId>/<value>``
@@ -8,15 +9,28 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, g, jsonify, request
+from flask import (
+    Blueprint,
+    Response,
+    current_app,
+    g,
+    jsonify,
+    request,
+    stream_with_context,
+)
 from invenio_pidstore.errors import PIDDoesNotExistError, PIDUnregistered
 from invenio_records_resources.services.errors import PermissionDeniedError
 
+from .header import instrument_model
+from .mgf import failure_comment, mgf, spectrum_mgf
 from .proxi import to_proxi_dataset
-from .reader import SpectrumReadError, to_proxi
+from .reader import SpectrumReadError
 from .service import (
     RunNotIndexed,
+    SpectrumAccess,
+    SpectrumFailure,
     SpectrumNotFound,
+    get_spectra,
     get_spectrum,
     get_spectrum_by_usi,
     list_spectra,
@@ -31,6 +45,8 @@ blueprint = Blueprint("spectra_api", __name__)
 ui_blueprint = Blueprint("spectra_ui", __name__, template_folder="templates")
 
 RESULT_TYPES = ("compact", "full")
+FORMATS = ("json", "mgf")
+DEFAULT_BATCH_LIMIT = 1000
 
 
 def create_blueprint(app):
@@ -48,31 +64,34 @@ def _error(status: int, message: str, **extra):
     return jsonify({"code": status, "message": message, **extra}), status
 
 
+def error_status(e: Exception) -> tuple[int, str]:
+    """HTTP status and message of a spectrum error."""
+    if isinstance(e, InvalidUSI):
+        return 400, str(e)
+    if isinstance(e, PermissionDeniedError):
+        return 403, "Permission denied"
+    if isinstance(e, (SpectrumNotFound, PIDDoesNotExistError, PIDUnregistered)):
+        return 404, str(e) or "Not found"
+    if isinstance(e, RunNotIndexed):
+        return 409, str(e)
+    if isinstance(e, SpectrumReadError):
+        return 422, str(e)
+    raise e
+
+
 @blueprint.errorhandler(InvalidUSI)
-def _invalid_usi(e):
-    return _error(400, str(e))
-
-
 @blueprint.errorhandler(PermissionDeniedError)
-def _forbidden(e):
-    return _error(403, "Permission denied")
-
-
 @blueprint.errorhandler(SpectrumNotFound)
 @blueprint.errorhandler(PIDDoesNotExistError)
 @blueprint.errorhandler(PIDUnregistered)
-def _not_found(e):
-    return _error(404, str(e) or "Not found")
+@blueprint.errorhandler(SpectrumReadError)
+def _spectrum_error(e):
+    return _error(*error_status(e))
 
 
 @blueprint.errorhandler(RunNotIndexed)
 def _not_indexed(e):
     return _error(409, str(e), indexing_status=e.status.name, detail=e.error)
-
-
-@blueprint.errorhandler(SpectrumReadError)
-def _unreadable(e):
-    return _error(422, str(e))
 
 
 def _quote(value: str) -> str:
@@ -101,9 +120,64 @@ def proxi_spectra():
             return _error(400, "Parameter usi, or accession, msRun and scan are required")
         usi_value = build_usi(accession, ms_run, "scan", scan)
     result_type = _result_type("compact")
-    usi, spectrum = get_spectrum_by_usi(g.identity, usi_value)
+    access = SpectrumAccess(g.identity)
+    result = get_spectrum_by_usi(access, usi_value)
     # echo the USI as requested (it may include an interpretation)
-    return jsonify([to_proxi(str(usi), spectrum, result_type)])
+    return jsonify([access.proxi(result, result_type, usi=usi_value)])
+
+
+@blueprint.route("/proxi/v0.1/spectra", methods=["POST"])
+def proxi_spectra_batch():
+    """Spectra of a list of USIs (not part of PROXI 0.1).
+
+    Body: ``{"usis": [...]}``. ``format=json`` (default) returns a list of
+    PROXI spectra in the order of the USIs; spectra that cannot be read get
+    the status ``PEAK UNAVAILABLE`` and an ``error`` {code, message}.
+    ``format=mgf`` returns MGF with unreadable spectra as comments.
+    """
+    body = request.get_json(silent=True) or {}
+    usis = body.get("usis")
+    if not isinstance(usis, list) or not all(isinstance(u, str) for u in usis):
+        return _error(400, 'Body must be {"usis": [<USI>, ...]}')
+    limit = current_app.config.get("SPECTRA_BATCH_LIMIT", DEFAULT_BATCH_LIMIT)
+    if len(usis) > limit:
+        return _error(400, f"At most {limit} USIs per request")
+    output = request.args.get("format", "json")
+    if output not in FORMATS:
+        return _error(400, f"format must be one of {', '.join(FORMATS)}")
+    result_type = _result_type("full")
+
+    access = SpectrumAccess(g.identity)
+    results = get_spectra(access, usis)
+    if output == "json":
+        return jsonify([_batch_item(access, requested, r, result_type) for requested, r in zip(usis, results, strict=True)])
+
+    blocks = [_mgf_block(access, requested, r) for requested, r in zip(usis, results, strict=True)]
+    return Response(
+        stream_with_context(mgf(blocks)),
+        mimetype="text/plain",
+        headers={"Content-Disposition": 'attachment; filename="spectra.mgf"'},
+    )
+
+
+def _batch_item(access: SpectrumAccess, requested: str, result, result_type: str) -> dict:
+    if isinstance(result, SpectrumFailure):
+        code, message = error_status(result.error)
+        return {"usi": requested, "status": "PEAK UNAVAILABLE", "error": {"code": code, "message": message}}
+    return access.proxi(result, result_type, usi=requested)
+
+
+def _mgf_block(access: SpectrumAccess, requested: str, result) -> str:
+    if isinstance(result, SpectrumFailure):
+        return failure_comment(requested, *error_status(result.error))
+    model = instrument_model(result.run.header or {})
+    return spectrum_mgf(
+        requested,
+        result.spectrum,
+        access.provenance(result),
+        instrument=model["name"] if model else None,
+        scan=result.entry.scan,
+    )
 
 
 @blueprint.route("/proxi/v0.1/datasets")
@@ -147,6 +221,7 @@ def file_spectrum(pid_value, key, index_type, value):
     """Return one spectrum of an mzML file in PROXI format."""
     if index_type not in INDEX_TYPES:
         return _error(400, f"Index type must be one of {', '.join(INDEX_TYPES)}")
-    usi, spectrum = get_spectrum(g.identity, pid_value, index_type, value, file_key=key)
+    access = SpectrumAccess(g.identity)
+    result = get_spectrum(access, pid_value, index_type, value, file_key=key)
     # besides the PROXI fields, the position of the spectrum in the file
-    return jsonify({**to_proxi(usi, spectrum, _result_type("full")), "index": spectrum["index"]})
+    return jsonify({**access.proxi(result, _result_type("full")), "index": result.spectrum["index"]})

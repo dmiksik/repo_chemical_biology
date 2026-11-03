@@ -12,6 +12,7 @@ import uuid
 
 from invenio_db import db
 from invenio_files_rest.models import FileInstance
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy_utils.types import ChoiceType, UUIDType
 
 
@@ -44,6 +45,9 @@ class SpectraRun(db.Model):
     status = db.Column(ChoiceType(RunStatus, impl=db.CHAR(1)), nullable=False, default=RunStatus.PENDING)
     error = db.Column(db.Text)
     spectra_count = db.Column(db.Integer)
+    # file-level metadata from the mzML header: instruments, software,
+    # source files, data processing (see header.py)
+    header = db.Column(db.JSON().with_variant(JSONB(), "postgresql"))
     created = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
     updated = db.Column(db.DateTime, nullable=False, server_default=db.func.now(), onupdate=db.func.now())
 

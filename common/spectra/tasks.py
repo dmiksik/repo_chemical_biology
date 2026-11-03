@@ -13,6 +13,7 @@ from invenio_db import db
 from invenio_files_rest.models import FileInstance, Location
 
 from .converter import ConversionError, convert_raw
+from .header import read_header
 from .models import RunStatus, SpectraRun, SpectrumIndexEntry
 from .mzml_index import NotIndexedMzML, read_index
 from .reader import SpectrumReadError, parse_spectrum, read_spectrum_xml
@@ -82,13 +83,18 @@ def convert_run(run_id: str) -> None:
 def index_run(run_id: str) -> None:
     """Build the spectrum index of one run (mzML file)."""
     run = db.session.get(SpectraRun, run_id)
-    if run is None or run.status == RunStatus.INDEXED:
+    if run is None or (run.status == RunStatus.INDEXED and run.header is not None):
         return
 
     try:
         file = run_file(run)
         stream = file.storage().open()
         try:
+            header = _header(run_id, stream)
+            if run.status == RunStatus.INDEXED:
+                # indexed before headers were stored
+                _finish(run_id, RunStatus.INDEXED, header=header)
+                return
             count = _index(run, stream, file.size)
         finally:
             stream.close()
@@ -100,7 +106,16 @@ def index_run(run_id: str) -> None:
         current_app.logger.exception("Indexing of spectra run %s failed", run_id)
         _finish(run_id, RunStatus.FAILED, error=str(e))
     else:
-        _finish(run_id, RunStatus.INDEXED, spectra_count=count)
+        _finish(run_id, RunStatus.INDEXED, spectra_count=count, header=header)
+
+
+def _header(run_id: str, stream) -> dict | None:
+    """Return the mzML header; a file without a readable header can still be indexed."""
+    try:
+        return read_header(stream)
+    except SpectrumReadError as e:
+        current_app.logger.warning("No mzML header in spectra run %s: %s", run_id, e)
+        return None
 
 
 def _index(run: SpectraRun, stream, size: int) -> int:

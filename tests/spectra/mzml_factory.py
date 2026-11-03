@@ -10,8 +10,49 @@ from dataclasses import dataclass, field
 HEADER = """<?xml version="1.0" encoding="utf-8"?>
 <indexedmzML xmlns="http://psi.hupo.org/ms/mzml">
 <mzML xmlns="http://psi.hupo.org/ms/mzml" version="1.1.0">
-<run id="test_run">
+{file_header}<run id="test_run" defaultInstrumentConfigurationRef="IC1" startTimeStamp="2017-07-31T16:10:13Z">
 <spectrumList count="{count}">
+"""
+
+# File-level metadata as written by msconvert for a Thermo file
+FILE_HEADER = """<cvList count="1"><cv id="MS" fullName="PSI-MS" URI="psi-ms.obo"/></cvList>
+<fileDescription>
+<fileContent><cvParam cvRef="MS" accession="MS:1000580" name="MSn spectrum" value=""/></fileContent>
+<sourceFileList count="1">
+<sourceFile id="RAW1" name="test_run.raw" location="file:///C:/data">
+<cvParam cvRef="MS" accession="MS:1000768" name="Thermo nativeID format" value=""/>
+<cvParam cvRef="MS" accession="MS:1000569" name="SHA-1" value="d0bfe48c1e71d17020a60bdff9c931658d2c9065"/>
+</sourceFile>
+</sourceFileList>
+</fileDescription>
+<referenceableParamGroupList count="1">
+<referenceableParamGroup id="CommonInstrumentParams">
+<cvParam cvRef="MS" accession="MS:1001911" name="Q Exactive" value=""/>
+<cvParam cvRef="MS" accession="MS:1000529" name="instrument serial number" value="Exactive Series slot #1"/>
+</referenceableParamGroup>
+</referenceableParamGroupList>
+<softwareList count="2">
+<software id="Xcalibur" version="2.8"><cvParam cvRef="MS" accession="MS:1000532" name="Xcalibur" value=""/></software>
+<software id="pwiz" version="3.0.18353"><cvParam cvRef="MS" accession="MS:1000615" name="ProteoWizard software" value=""/></software>
+</softwareList>
+<instrumentConfigurationList count="2">
+<instrumentConfiguration id="IC0"><cvParam cvRef="MS" accession="MS:1000031" name="instrument model" value=""/></instrumentConfiguration>
+<instrumentConfiguration id="IC1">
+<referenceableParamGroupRef ref="CommonInstrumentParams"/>
+<componentList count="2">
+<source order="1"><cvParam cvRef="MS" accession="MS:1000073" name="electrospray ionization" value=""/></source>
+<analyzer order="2"><cvParam cvRef="MS" accession="MS:1000484" name="orbitrap" value=""/></analyzer>
+</componentList>
+<softwareRef ref="Xcalibur"/>
+</instrumentConfiguration>
+</instrumentConfigurationList>
+<dataProcessingList count="1">
+<dataProcessing id="pwiz_conversion">
+<processingMethod order="0" softwareRef="pwiz">
+<cvParam cvRef="MS" accession="MS:1000544" name="Conversion to mzML" value=""/>
+</processingMethod>
+</dataProcessing>
+</dataProcessingList>
 """
 
 SPECTRUM = """<spectrum index="{index}" id="{native_id}" defaultArrayLength="{length}">
@@ -86,9 +127,16 @@ def _array(values, kind_acc, kind_name, zlib_compressed, float64):
     )
 
 
-def build_mzml(spectra: list[Spectrum], zlib_compressed: bool = True, float64: bool = True) -> MzMLFile:
-    """Return an indexed mzML with the given spectra and its spectrum offsets."""
-    out = bytearray(HEADER.format(count=len(spectra)).encode())
+def build_mzml(
+    spectra: list[Spectrum], zlib_compressed: bool = True, float64: bool = True, file_header: bool = False
+) -> MzMLFile:
+    """Return an indexed mzML with the given spectra and its spectrum offsets.
+
+    ``file_header`` adds file-level metadata (instrument, software, source file).
+    """
+    out = bytearray(
+        HEADER.format(count=len(spectra), file_header=FILE_HEADER if file_header else "").encode()
+    )
     offsets = {}
     for index, spectrum in enumerate(spectra):
         offsets[spectrum.native_id] = len(out)

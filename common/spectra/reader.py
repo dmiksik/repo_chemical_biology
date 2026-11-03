@@ -83,11 +83,11 @@ def parse_spectrum(xml: bytes, decode_arrays: bool = True) -> dict[str, Any]:
     attributes = []
     for path in _ATTRIBUTE_PATHS:
         for element in spectrum.findall(_ns(path)) if path != "." else [spectrum]:
-            attributes.extend(_cv_params(element))
+            attributes.extend(cv_params(element))
 
     arrays = {}
     for data_array in spectrum.iterfind(_ns("binaryDataArrayList/binaryDataArray")):
-        params = {p["accession"] for p in _cv_params(data_array)}
+        params = {p["accession"] for p in cv_params(data_array)}
         kind = MZ_ARRAY if MZ_ARRAY in params else INTENSITY_ARRAY if INTENSITY_ARRAY in params else None
         if kind and decode_arrays:
             arrays[kind] = _decode_array(data_array, params)
@@ -145,7 +145,7 @@ def _ns(path: str) -> str:
     return "/".join(MZML_NS + part for part in path.split("/"))
 
 
-def _cv_params(element: ElementTree.Element) -> list[dict[str, str]]:
+def cv_params(element: ElementTree.Element) -> list[dict[str, str]]:
     params = []
     for cv in element.iterfind(MZML_NS + "cvParam"):
         param = {"accession": cv.get("accession"), "name": cv.get("name")}
