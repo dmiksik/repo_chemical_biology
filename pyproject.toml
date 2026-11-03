@@ -14,6 +14,10 @@ requires-python = ">=3.14,<3.15"
 i18n = "i18n.webpack:theme"
 components = "ui.components.webpack:theme"
 ui_dataset = "ui.dataset.webpack:theme"
+spectra = "common.spectra.webpack:theme"
+
+[project.entry-points."invenio_previewer.previewers"]
+mzml = "common.spectra.previewer"
 
 [project.entry-points."invenio_i18n.translations"]
 translations = "i18n"
@@ -23,6 +27,7 @@ repository = "common:alembic"
 
 [project.entry-points."invenio_base.blueprints"]
 ui_dataset = "ui.dataset:create_blueprint"
+spectra_ui = "common.spectra.views:create_ui_blueprint"
 
 [project.entry-points."invenio_base.api_blueprints"]
 spectra = "common.spectra.views:create_blueprint"

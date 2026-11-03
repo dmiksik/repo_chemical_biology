@@ -1,0 +1,64 @@
+{%- extends config.PREVIEWER_ABSTRACT_TEMPLATE %}
+
+{% block panel %}
+<div id="spectra-previewer" class="spectra-previewer"
+     data-api="{{ config.SITE_API_URL }}"
+     data-record="{{ record_pid }}"
+     data-file="{{ file.filename }}"
+     data-draft="{{ 'true' if is_draft else 'false' }}">
+
+  <div class="spectra-message ui message hidden" role="status"></div>
+
+  <div class="spectra-detail hidden">
+    <div class="spectra-detail-header">
+      <div>
+        <strong class="spectra-title"></strong>
+        <div class="spectra-usi-row">
+          <code class="spectra-usi" title="{{ _('Universal Spectrum Identifier') }}"></code>
+          <button type="button" class="ui mini compact button spectra-copy-usi">
+            <i class="copy outline icon" aria-hidden="true"></i>{{ _('Copy USI') }}
+          </button>
+          <a class="ui mini compact basic button spectra-json" target="_blank" rel="noopener">PROXI JSON</a>
+        </div>
+      </div>
+      <div class="spectra-nav">
+        <button type="button" class="ui mini compact icon button spectra-prev" aria-label="{{ _('Previous spectrum') }}"><i class="chevron left icon"></i></button>
+        <button type="button" class="ui mini compact icon button spectra-next" aria-label="{{ _('Next spectrum') }}"><i class="chevron right icon"></i></button>
+      </div>
+    </div>
+    <div class="spectra-plot" aria-label="{{ _('Spectrum plot') }}"></div>
+    <div class="spectra-attributes"></div>
+  </div>
+
+  <div class="spectra-list hidden">
+    <div class="spectra-toolbar">
+      <label>{{ _('MS level') }}
+        <select class="ui compact dropdown spectra-ms-level">
+          <option value="">{{ _('All') }}</option>
+          <option value="1">MS1</option>
+          <option value="2" selected>MS2</option>
+          <option value="3">MS3</option>
+        </select>
+      </label>
+      <span class="spectra-total"></span>
+      <span class="spectra-pager">
+        <button type="button" class="ui mini compact icon button spectra-page-prev" aria-label="{{ _('Previous page') }}"><i class="chevron left icon"></i></button>
+        <span class="spectra-page"></span>
+        <button type="button" class="ui mini compact icon button spectra-page-next" aria-label="{{ _('Next page') }}"><i class="chevron right icon"></i></button>
+      </span>
+    </div>
+    <table class="ui selectable compact celled unstackable table spectra-table">
+      <thead>
+        <tr>
+          <th>{{ _('Scan') }}</th>
+          <th>{{ _('MS level') }}</th>
+          <th>{{ _('RT (min)') }}</th>
+          <th>{{ _('Precursor m/z') }}</th>
+          <th>{{ _('Charge') }}</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

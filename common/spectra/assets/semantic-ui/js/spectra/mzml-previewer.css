@@ -1,0 +1,79 @@
+.spectra-previewer {
+  padding: 0.5rem 1rem 1rem;
+}
+
+.spectra-previewer .hidden {
+  display: none !important;
+}
+
+.spectra-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.spectra-usi-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.spectra-usi {
+  font-size: 0.85em;
+  word-break: break-all;
+}
+
+.spectra-svg {
+  width: 100%;
+  height: auto;
+  margin-top: 0.5rem;
+}
+
+.spectra-svg .axis {
+  stroke: #555;
+  stroke-width: 1;
+}
+
+.spectra-svg .tick,
+.spectra-svg .peak-label {
+  font-size: 11px;
+  fill: #444;
+}
+
+.spectra-svg .label {
+  font-size: 12px;
+  fill: #222;
+}
+
+.spectra-svg .peak {
+  stroke: #1f6fb2;
+  stroke-width: 1.5;
+}
+
+.spectra-svg .peak:hover {
+  stroke: #d9480f;
+  stroke-width: 3;
+}
+
+.spectra-attributes {
+  margin: 0.5rem 0 1rem;
+}
+
+.spectra-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.spectra-pager {
+  margin-left: auto;
+}
+
+.spectra-table tbody tr {
+  cursor: pointer;
+}

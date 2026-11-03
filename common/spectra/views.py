@@ -17,12 +17,20 @@ from .usi import INDEX_TYPES, InvalidUSI
 
 blueprint = Blueprint("spectra_api", __name__)
 
+# UI app blueprint, only provides the templates of the mzML previewer
+ui_blueprint = Blueprint("spectra_ui", __name__, template_folder="templates")
+
 RESULT_TYPES = ("compact", "full")
 
 
 def create_blueprint(app):
     """Return the API blueprint (``invenio_base.api_blueprints`` entry point)."""
     return blueprint
+
+
+def create_ui_blueprint(app):
+    """Return the UI blueprint (``invenio_base.blueprints`` entry point)."""
+    return ui_blueprint
 
 
 def _error(status: int, message: str, **extra):
@@ -90,4 +98,5 @@ def file_spectrum(pid_value, key, index_type, value):
     if index_type not in INDEX_TYPES:
         return _error(400, f"Index type must be one of {', '.join(INDEX_TYPES)}")
     usi, spectrum = get_spectrum(g.identity, pid_value, index_type, value, file_key=key)
-    return jsonify(to_proxi(usi, spectrum, _result_type()))
+    # besides the PROXI fields, the position of the spectrum in the file
+    return jsonify({**to_proxi(usi, spectrum, _result_type()), "index": spectrum["index"]})
