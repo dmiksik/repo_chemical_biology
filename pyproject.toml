@@ -24,6 +24,15 @@ repository = "common:alembic"
 [project.entry-points."invenio_base.blueprints"]
 ui_dataset = "ui.dataset:create_blueprint"
 
+[project.entry-points."invenio_base.api_blueprints"]
+spectra = "common.spectra.views:create_blueprint"
+
+[project.entry-points."invenio_celery.tasks"]
+spectra = "common.spectra.tasks"
+
+[project.entry-points."invenio_db.models"]
+spectra = "common.spectra.models"
+
 [project.entry-points."invenio_base.finalize_app"]
 ui_dataset = "ui.dataset:finalize_app"
 

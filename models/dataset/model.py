@@ -5,9 +5,11 @@ from __future__ import annotations
 
 from invenio_i18n import lazy_gettext as _
 from oarepo_model.api import model
-from oarepo_model.customizations import AddMetadataExport
+from oarepo_model.customizations import AddMetadataExport, AddServiceComponent
 from oarepo_model.datatypes.registry import from_yaml
 from ccmm_invenio.models import ccmm_production_preset_1_1_0
+
+from common.spectra.components import SpectraIndexComponent
 
 from .serializers import DataCiteJSONSerializer
 
@@ -41,6 +43,9 @@ dataset_model = model(
             mimetype="application/vnd.datacite.datacite+json",
             serializer=DataCiteJSONSerializer()
         ),
+
+        # index spectra of mzML files on publish (common/spectra)
+        AddServiceComponent(SpectraIndexComponent),
     ],
     configuration={
         "ui_blueprint_name": "dataset_ui"
