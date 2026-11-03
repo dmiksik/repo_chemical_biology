@@ -17,11 +17,20 @@ from invenio_records_resources.services.errors import FileKeyNotFoundError
 from invenio_search import current_search_client
 from invenio_search.engine import dsl
 from invenio_search.utils import build_alias_name
+from sqlalchemy import or_
 
 from .models import RunStatus, SpectraRun, SpectrumIndexEntry
 from .reader import parse_spectrum, spectrum_xml
 from .tasks import run_file
-from .usi import USI, build_usi, is_accession, native_id_value, normalize_ms_run, parse_usi
+from .usi import (
+    USI,
+    build_usi,
+    is_accession,
+    ms_run_name,
+    native_id_value,
+    normalize_ms_run,
+    parse_usi,
+)
 
 DATASET_MODEL = "dataset"
 
@@ -100,8 +109,15 @@ def _run(record_id: str, *, file_key: str | None = None, ms_run: str | None = No
     if file_key:
         run = query.filter_by(file_key=file_key).one_or_none()
     else:
-        # also msRun given with a path and extension, as MassIVE does
-        run = query.filter(SpectraRun.ms_run.in_({ms_run, normalize_ms_run(ms_run)})).first()
+        # msRun as a path, with or without an extension (MassIVE uses both), or only the
+        # file name of a run stored under a path (peak/x.mzML -> x); most specific first
+        name = normalize_ms_run(ms_run)
+        names = [ms_run, ms_run_name(ms_run), name]
+        runs = query.filter(or_(SpectraRun.ms_run.in_(names), SpectraRun.ms_run.endswith(f"/{name}"))).all()
+        by_name = {r.ms_run: r for r in runs}
+        run = next((by_name[n] for n in names if n in by_name), None)
+        if run is None and len(runs) == 1:  # unambiguous file name
+            run = runs[0]
     if run is None:
         raise SpectrumNotFound(
             f"File {file_key or ms_run} of record {record_id} has no indexed spectra (not an mzML or raw file)"
