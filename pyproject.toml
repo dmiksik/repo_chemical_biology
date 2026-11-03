@@ -32,6 +32,9 @@ spectra_ui = "common.spectra.views:create_ui_blueprint"
 [project.entry-points."invenio_base.api_blueprints"]
 spectra = "common.spectra.views:create_blueprint"
 
+[project.entry-points."flask.commands"]
+spectra = "common.spectra.cli:spectra"
+
 [project.entry-points."invenio_celery.tasks"]
 spectra = "common.spectra.tasks"
 

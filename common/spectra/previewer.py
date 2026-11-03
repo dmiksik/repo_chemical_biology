@@ -9,12 +9,12 @@ from __future__ import annotations
 from flask import render_template, request
 from invenio_previewer.proxies import current_previewer
 
-previewable_extensions = ["mzml"]
+previewable_extensions = ["mzml", "raw"]
 
 
 def can_preview(file) -> bool:
-    """Determine if the given file can be previewed."""
-    return file.has_extensions(".mzml")
+    """Determine if the given file can be previewed (raw files are converted to mzML)."""
+    return file.has_extensions(".mzml", ".raw")
 
 
 def preview(file):

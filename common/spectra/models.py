@@ -1,8 +1,8 @@
 """Database models of the spectrum index.
 
-One SpectraRun per mzML file of a published record, one SpectrumIndexEntry per
-spectrum in it. Published files are immutable, so the index of a record
-version never changes.
+One SpectraRun per mzML (or converted raw) file of a published record, one
+SpectrumIndexEntry per spectrum in it. Published files are immutable, so the
+index of a record version never changes.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import enum
 import uuid
 
 from invenio_db import db
+from invenio_files_rest.models import FileInstance
 from sqlalchemy_utils.types import ChoiceType, UUIDType
 
 
@@ -18,6 +19,7 @@ class RunStatus(enum.Enum):
     """Indexing state of a run."""
 
     PENDING = "P"
+    CONVERTING = "C"
     INDEXED = "I"
     UNSUPPORTED = "U"
     FAILED = "F"
@@ -31,7 +33,12 @@ class SpectraRun(db.Model):
 
     id = db.Column(UUIDType, primary_key=True, default=uuid.uuid4)
     record_pid = db.Column(db.String(255), nullable=False, index=True)
+    # the file the run was uploaded as (mzML or raw); its access rules apply
     file_key = db.Column(db.Text, nullable=False)
+    # mzML converted from a raw file. It is not in any bucket of the record,
+    # so it is accessible only through the spectra API, with the access
+    # rules of the raw file.
+    converted_file_id = db.Column(UUIDType, db.ForeignKey(FileInstance.id))
     ms_run = db.Column(db.Text, nullable=False)
     checksum = db.Column(db.String(255))
     status = db.Column(ChoiceType(RunStatus, impl=db.CHAR(1)), nullable=False, default=RunStatus.PENDING)

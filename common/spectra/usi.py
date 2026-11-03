@@ -27,6 +27,9 @@ ACCESSION_RE = re.compile(r"^(PXD|RPXD|PXL)\d{6}$|^(MSV|RMSV)\d{9}$")
 
 MZML_EXTENSIONS = (".mzml",)
 
+# Vendor raw files converted to mzML (Thermo)
+RAW_EXTENSIONS = (".raw",)
+
 # msRun may contain colons, so the USI is anchored on the index type instead
 # of being split on ':'.
 USI_RE = re.compile(
@@ -71,10 +74,16 @@ def is_mzml(key: str) -> bool:
     return key.lower().endswith(MZML_EXTENSIONS)
 
 
+def is_raw(key: str) -> bool:
+    """Return True if the file key has a raw file extension that is converted to mzML."""
+    return key.lower().endswith(RAW_EXTENSIONS)
+
+
 def ms_run_name(key: str) -> str:
-    """Return the msRun component for a file key: the key without the mzML extension."""
-    if is_mzml(key):
-        return key[: -len(".mzml")]
+    """Return the msRun component for a file key: the key without the mzML or raw extension."""
+    for extension in (*MZML_EXTENSIONS, *RAW_EXTENSIONS):
+        if key.lower().endswith(extension):
+            return key[: -len(extension)]
     return key
 
 

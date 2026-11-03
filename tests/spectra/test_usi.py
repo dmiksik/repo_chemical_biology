@@ -67,6 +67,8 @@ def test_ms_run_name():
     assert ms_run_name("run01.mzML") == "run01"
     assert ms_run_name("run01.MZML") == "run01"
     assert ms_run_name("run01.mzML.gz") == "run01.mzML.gz"
+    assert ms_run_name("run01.raw") == "run01"
+    assert ms_run_name("run01.RAW") == "run01"
 
 
 @pytest.mark.parametrize(

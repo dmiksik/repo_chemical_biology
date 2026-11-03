@@ -12,6 +12,7 @@ from typing import Any
 import s3fs
 from flask import current_app
 from invenio_cache import current_cache
+from invenio_files_rest.models import FileInstance
 from invenio_records_resources.services.errors import FileKeyNotFoundError
 from invenio_search import current_search_client
 from invenio_search.engine import dsl
@@ -19,6 +20,7 @@ from invenio_search.utils import build_alias_name
 
 from .models import RunStatus, SpectraRun, SpectrumIndexEntry
 from .reader import parse_spectrum, spectrum_xml
+from .tasks import run_file
 from .usi import USI, build_usi, is_accession, native_id_value, parse_usi
 
 DATASET_MODEL = "dataset"
@@ -98,7 +100,7 @@ def _run(record_id: str, *, file_key: str | None = None, ms_run: str | None = No
     query = query.filter_by(file_key=file_key) if file_key else query.filter_by(ms_run=ms_run)
     run = query.one_or_none()
     if run is None:
-        raise SpectrumNotFound(f"File {file_key or ms_run} of record {record_id} is not an indexed mzML")
+        raise SpectrumNotFound(f"File {file_key or ms_run} of record {record_id} has no indexed spectra (not an mzML or raw file)")
     return run
 
 
@@ -158,7 +160,8 @@ def get_spectrum(
 ) -> tuple[str, dict[str, Any]]:
     """Return the USI and the parsed spectrum."""
     run = _run(record_id, file_key=file_key, ms_run=ms_run)
-    file = _file(identity, record_id, run.file_key)
+    # permission check on the uploaded file, also for runs converted from raw
+    _file(identity, record_id, run.file_key)
     _check_indexed(run)
     entry = _entry(run, index_type, value)
 
@@ -167,22 +170,23 @@ def get_spectrum(
     cache_key = f"spectra:{run.id}:{entry.position}"
     spectrum = current_cache.get(cache_key)
     if spectrum is None:
-        spectrum = parse_spectrum(spectrum_xml(read_range(file, entry.offset, entry.length), entry.offset))
+        chunk = read_range(run_file(run), entry.offset, entry.length)
+        spectrum = parse_spectrum(spectrum_xml(chunk, entry.offset))
         current_cache.set(cache_key, spectrum, timeout=current_app.config.get("SPECTRA_CACHE_TIMEOUT", 86400))
     return entry_usi(collection_of(record_id), run, entry), spectrum
 
 
-def read_range(file, offset: int, length: int) -> bytes:
-    """Read ``length`` bytes at ``offset`` of a record file.
+def read_range(file: FileInstance, offset: int, length: int) -> bytes:
+    """Read ``length`` bytes at ``offset`` of a file.
 
     On S3 this is a single ranged GET; reading from the file stream would
     fetch a whole S3_DEFAULT_BLOCK_SIZE block (5 MB) for every spectrum.
     """
-    storage = file._file.file.storage()
+    storage = file.storage()
     fs, path = storage._get_fs()
     if isinstance(fs, s3fs.S3FileSystem):
         return fs.cat_file(path, start=offset, end=offset + length)
-    stream = file.get_stream("rb")
+    stream = storage.open()
     try:
         stream.seek(offset)
         return stream.read(length)

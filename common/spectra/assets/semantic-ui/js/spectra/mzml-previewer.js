@@ -112,8 +112,9 @@ class SpectraPreviewer {
   }
 
   handleError(error) {
-    if (error.status === 409 && error.body.indexing_status === "PENDING") {
-      this.showMessage("info", "Spectra of this file are being indexed, please wait...");
+    if (error.status === 409 && ["PENDING", "CONVERTING"].includes(error.body.indexing_status)) {
+      const action = error.body.indexing_status === "CONVERTING" ? "converted to mzML" : "indexed";
+      this.showMessage("info", `Spectra of this file are being ${action}, please wait...`);
       setTimeout(() => this.loadPage(), RETRY_MS);
     } else if (error.status === 409) {
       this.showMessage("warning", `Spectra of this file are not available: ${error.body.detail || error.message}`);
