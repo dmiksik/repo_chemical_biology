@@ -55,7 +55,11 @@ class SpectrumReadError(ValueError):
 def read_spectrum_xml(fp: BinaryIO, offset: int, length: int) -> bytes:
     """Read the ``<spectrum>`` element at offset, trimmed after ``</spectrum>``."""
     fp.seek(offset)
-    chunk = fp.read(length)
+    return spectrum_xml(fp.read(length), offset)
+
+
+def spectrum_xml(chunk: bytes, offset: int) -> bytes:
+    """Return the ``<spectrum>`` element from bytes read at its offset (see mzml_index.IndexEntry)."""
     if not chunk.lstrip().startswith(b"<spectrum"):
         raise SpectrumReadError(f"No <spectrum> element at offset {offset}")
     end = chunk.find(_SPECTRUM_END)

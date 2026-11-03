@@ -9,11 +9,16 @@ from __future__ import annotations
 
 from typing import Any
 
+import s3fs
 from flask import current_app
+from invenio_cache import current_cache
 from invenio_records_resources.services.errors import FileKeyNotFoundError
+from invenio_search import current_search_client
+from invenio_search.engine import dsl
+from invenio_search.utils import build_alias_name
 
 from .models import RunStatus, SpectraRun, SpectrumIndexEntry
-from .reader import parse_spectrum, read_spectrum_xml
+from .reader import parse_spectrum, spectrum_xml
 from .usi import USI, build_usi, is_accession, native_id_value, parse_usi
 
 DATASET_MODEL = "dataset"
@@ -45,25 +50,39 @@ def files_service():
     return current_app.extensions[DATASET_MODEL].files_service
 
 
-def collection_of(record: dict[str, Any]) -> str:
-    """Return the USI collection of a record: its PXD/MSV accession, else its id."""
+def collection_of(record_id: str) -> str:
+    """Return the USI collection of a published record: its PXD/MSV accession, else its id.
+
+    The record is loaded without the service (no serialization, which is
+    most of the cost of a service read); callers check the permissions.
+    """
+    record = records_service().record_cls.pid.resolve(record_id)
     for identifier in record.get("metadata", {}).get("identifiers", []):
         if identifier.get("scheme") in ACCESSION_SCHEMES and is_accession(identifier.get("identifier", "")):
             return identifier["identifier"]
-    return record["id"]
+    return record_id
 
 
-def resolve_collection(identity, collection: str) -> str:
+def resolve_collection(collection: str) -> str:
     """Return the record id for a USI collection (accession or record id)."""
     if not is_accession(collection):
         return collection
-    result = records_service().search(
-        identity, params={"q": f'metadata.identifiers.identifier:"{collection}"', "size": 1}
+    # A plain search, without the record service which serializes the hits;
+    # access to the record files is checked afterwards. New versions of a
+    # dataset keep its accession, so the latest version is taken.
+    search = (
+        dsl.Search(
+            using=current_search_client, index=build_alias_name(records_service().record_cls.index.search_alias)
+        )
+        .filter("term", **{"metadata.identifiers.identifier": collection})
+        .filter("terms", **{"metadata.identifiers.scheme": list(ACCESSION_SCHEMES)})
+        .sort({"versions.is_latest": "desc"}, {"versions.index": "desc"})
+        .source(["id"])[:1]
     )
-    hits = list(result.hits)
+    hits = search.execute().hits
     if not hits:
         raise SpectrumNotFound(f"No dataset with accession {collection}")
-    return hits[0]["id"]
+    return hits[0].id
 
 
 def _file(identity, record_id: str, file_key: str):
@@ -80,9 +99,12 @@ def _run(record_id: str, *, file_key: str | None = None, ms_run: str | None = No
     run = query.one_or_none()
     if run is None:
         raise SpectrumNotFound(f"File {file_key or ms_run} of record {record_id} is not an indexed mzML")
+    return run
+
+
+def _check_indexed(run: SpectraRun) -> None:
     if run.status != RunStatus.INDEXED:
         raise RunNotIndexed(run)
-    return run
 
 
 def _entry(run: SpectraRun, index_type: str, value: str) -> SpectrumIndexEntry:
@@ -135,23 +157,43 @@ def get_spectrum(
     ms_run: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Return the USI and the parsed spectrum."""
-    record = records_service().read(identity, record_id).to_dict()
     run = _run(record_id, file_key=file_key, ms_run=ms_run)
     file = _file(identity, record_id, run.file_key)
+    _check_indexed(run)
     entry = _entry(run, index_type, value)
 
+    # Published files never change, so a parsed spectrum can be cached.
+    # The permission check above is done on every request.
+    cache_key = f"spectra:{run.id}:{entry.position}"
+    spectrum = current_cache.get(cache_key)
+    if spectrum is None:
+        spectrum = parse_spectrum(spectrum_xml(read_range(file, entry.offset, entry.length), entry.offset))
+        current_cache.set(cache_key, spectrum, timeout=current_app.config.get("SPECTRA_CACHE_TIMEOUT", 86400))
+    return entry_usi(collection_of(record_id), run, entry), spectrum
+
+
+def read_range(file, offset: int, length: int) -> bytes:
+    """Read ``length`` bytes at ``offset`` of a record file.
+
+    On S3 this is a single ranged GET; reading from the file stream would
+    fetch a whole S3_DEFAULT_BLOCK_SIZE block (5 MB) for every spectrum.
+    """
+    storage = file._file.file.storage()
+    fs, path = storage._get_fs()
+    if isinstance(fs, s3fs.S3FileSystem):
+        return fs.cat_file(path, start=offset, end=offset + length)
     stream = file.get_stream("rb")
     try:
-        spectrum = parse_spectrum(read_spectrum_xml(stream, entry.offset, entry.length))
+        stream.seek(offset)
+        return stream.read(length)
     finally:
         stream.close()
-    return entry_usi(collection_of(record), run, entry), spectrum
 
 
 def get_spectrum_by_usi(identity, usi_value: str) -> tuple[USI, dict[str, Any]]:
     """Return the parsed USI and the spectrum it identifies."""
     usi = parse_usi(usi_value)
-    record_id = resolve_collection(identity, usi.collection)
+    record_id = resolve_collection(usi.collection)
     _, spectrum = get_spectrum(identity, record_id, usi.index_type, usi.index, ms_run=usi.ms_run)
     return usi, spectrum
 
@@ -160,9 +202,9 @@ def list_spectra(
     identity, record_id: str, file_key: str, *, ms_level: int | None = None, page: int = 1, size: int = 100
 ) -> dict[str, Any]:
     """Return a page of spectrum summaries of an indexed file."""
-    record = records_service().read(identity, record_id).to_dict()
     run = _run(record_id, file_key=file_key)
     _file(identity, record_id, file_key)
+    _check_indexed(run)
 
     query = SpectrumIndexEntry.query.filter_by(run_id=run.id)
     if ms_level is not None:
@@ -171,7 +213,7 @@ def list_spectra(
     total = query.count()
     entries = query.order_by(SpectrumIndexEntry.position).offset((max(page, 1) - 1) * size).limit(size)
 
-    collection = collection_of(record)
+    collection = collection_of(record_id)
     return {
         "ms_run": run.ms_run,
         "total": total,
