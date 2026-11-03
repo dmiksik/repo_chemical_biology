@@ -1,5 +1,7 @@
 # Spectra: access to individual mass spectra
 
+Overview for colleagues (in Czech, with an architecture diagram): [docs/spectra-api.md](../../docs/spectra-api.md).
+
 Individual spectra of the mzML and Thermo `.raw` files of published `dataset`
 records can be read one by one, addressed by a
 [Universal Spectrum Identifier](https://www.psidev.info/usi) (USI) or by

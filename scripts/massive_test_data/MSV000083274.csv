@@ -1,0 +1,27 @@
+usi,filepath,dataset,collection,is_update,update_name,create_time,size,size_mb,sample_type,spectra_ms1,spectra_ms2,instrument_vendor,instrument_model,file_processed
+mzspec:MSV000083274:ccms_parameters/params.xml,ccms_parameters/params.xml,MSV000083274,,0,,2024-05-10 01:27:50.901000,3196,0,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperAuritum_Leaf.mzML,ccms_peak/PiperAuritum_Leaf.mzML,MSV000083274,,0,,2024-03-31 06:00:08.520000,139676159,133,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperAuritum_Stem.mzML,ccms_peak/PiperAuritum_Stem.mzML,MSV000083274,,0,,2024-03-31 06:00:09.290000,138392405,131,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperBetle_Leaf.mzML,ccms_peak/PiperBetle_Leaf.mzML,MSV000083274,,0,,2024-03-31 06:00:09.855000,140244881,133,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperBetle_Stem.mzML,ccms_peak/PiperBetle_Stem.mzML,MSV000083274,,0,,2024-03-31 06:00:10.447000,140995801,134,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperMethysticum_Honokane_Leaf.mzML,ccms_peak/PiperMethysticum_Honokane_Leaf.mzML,MSV000083274,,0,,2024-03-31 06:00:10.963000,140903031,134,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperMethysticum_Honokane_Stem.mzML,ccms_peak/PiperMethysticum_Honokane_Stem.mzML,MSV000083274,,0,,2024-03-31 06:00:11.570000,138198045,131,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperMethysticum_Issa_Leaf.mzML,ccms_peak/PiperMethysticum_Issa_Leaf.mzML,MSV000083274,,0,,2024-03-31 06:00:12.093000,140397601,133,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperMethysticum_Issa_Stem.mzML,ccms_peak/PiperMethysticum_Issa_Stem.mzML,MSV000083274,,0,,2024-03-31 06:00:12.636000,138054867,131,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperNigrum_Leaf.mzML,ccms_peak/PiperNigrum_Leaf.mzML,MSV000083274,,0,,2024-03-31 06:00:13.211000,147254350,140,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperNigrum_Stem.mzML,ccms_peak/PiperNigrum_Stem.mzML,MSV000083274,,0,,2024-03-31 06:00:13.995000,144710038,138,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperSarmentosum_Leaf.mzML,ccms_peak/PiperSarmentosum_Leaf.mzML,MSV000083274,,0,,2024-03-31 06:00:14.683000,140136004,133,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_peak/PiperSarmentosum_Stem.mzML,ccms_peak/PiperSarmentosum_Stem.mzML,MSV000083274,,0,,2024-03-31 06:00:15.328000,139606892,133,GNPS,0,0,,,No
+mzspec:MSV000083274:ccms_statistics/statistics.tsv,ccms_statistics/statistics.tsv,MSV000083274,,0,,2024-01-23 15:13:43.754000,0,0,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperAuritum_Leaf.mzML,peak/PiperAuritum_Leaf.mzML,MSV000083274,,0,,2024-03-31 05:58:49.655000,139676159,133,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperAuritum_Stem.mzML,peak/PiperAuritum_Stem.mzML,MSV000083274,,0,,2024-03-31 05:58:50.533000,138392405,131,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperBetle_Leaf.mzML,peak/PiperBetle_Leaf.mzML,MSV000083274,,0,,2024-03-31 05:58:52.446000,140244881,133,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperBetle_Stem.mzML,peak/PiperBetle_Stem.mzML,MSV000083274,,0,,2024-03-31 05:58:53.332000,140995801,134,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperMethysticum_Honokane_Leaf.mzML,peak/PiperMethysticum_Honokane_Leaf.mzML,MSV000083274,,0,,2024-03-31 05:58:54.520000,140903031,134,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperMethysticum_Honokane_Stem.mzML,peak/PiperMethysticum_Honokane_Stem.mzML,MSV000083274,,0,,2024-03-31 05:58:55.660000,138198045,131,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperMethysticum_Issa_Leaf.mzML,peak/PiperMethysticum_Issa_Leaf.mzML,MSV000083274,,0,,2024-03-31 05:58:57.023000,140397601,133,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperMethysticum_Issa_Stem.mzML,peak/PiperMethysticum_Issa_Stem.mzML,MSV000083274,,0,,2024-03-31 05:58:59.503000,138054867,131,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperNigrum_Leaf.mzML,peak/PiperNigrum_Leaf.mzML,MSV000083274,,0,,2024-03-31 05:59:00.403000,147254350,140,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperNigrum_Stem.mzML,peak/PiperNigrum_Stem.mzML,MSV000083274,,0,,2024-03-31 05:59:02.329000,144710038,138,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperSarmentosum_Leaf.mzML,peak/PiperSarmentosum_Leaf.mzML,MSV000083274,,0,,2024-03-31 05:59:03.590000,140136004,133,GNPS,0,0,,,No
+mzspec:MSV000083274:peak/PiperSarmentosum_Stem.mzML,peak/PiperSarmentosum_Stem.mzML,MSV000083274,,0,,2024-03-31 05:59:05.824000,139606892,133,GNPS,0,0,,,No
