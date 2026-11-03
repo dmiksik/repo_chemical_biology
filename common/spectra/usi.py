@@ -15,6 +15,7 @@ This module has no Invenio dependencies.
 
 from __future__ import annotations
 
+import posixpath
 import re
 from dataclasses import dataclass
 
@@ -85,6 +86,14 @@ def ms_run_name(key: str) -> str:
         if key.lower().endswith(extension):
             return key[: -len(extension)]
     return key
+
+
+def normalize_ms_run(ms_run: str) -> str:
+    """Return the run name of a msRun given as a file path, e.g. by MassIVE.
+
+    ``peak/mzml/run01.mzML`` -> ``run01``
+    """
+    return ms_run_name(posixpath.basename(ms_run))
 
 
 def parse_usi(value: str) -> USI:

@@ -21,7 +21,7 @@ from invenio_search.utils import build_alias_name
 from .models import RunStatus, SpectraRun, SpectrumIndexEntry
 from .reader import parse_spectrum, spectrum_xml
 from .tasks import run_file
-from .usi import USI, build_usi, is_accession, native_id_value, parse_usi
+from .usi import USI, build_usi, is_accession, native_id_value, normalize_ms_run, parse_usi
 
 DATASET_MODEL = "dataset"
 
@@ -97,10 +97,15 @@ def _file(identity, record_id: str, file_key: str):
 
 def _run(record_id: str, *, file_key: str | None = None, ms_run: str | None = None) -> SpectraRun:
     query = SpectraRun.query.filter_by(record_pid=record_id)
-    query = query.filter_by(file_key=file_key) if file_key else query.filter_by(ms_run=ms_run)
-    run = query.one_or_none()
+    if file_key:
+        run = query.filter_by(file_key=file_key).one_or_none()
+    else:
+        # also msRun given with a path and extension, as MassIVE does
+        run = query.filter(SpectraRun.ms_run.in_({ms_run, normalize_ms_run(ms_run)})).first()
     if run is None:
-        raise SpectrumNotFound(f"File {file_key or ms_run} of record {record_id} has no indexed spectra (not an mzML or raw file)")
+        raise SpectrumNotFound(
+            f"File {file_key or ms_run} of record {record_id} has no indexed spectra (not an mzML or raw file)"
+        )
     return run
 
 

@@ -7,6 +7,7 @@ from common.spectra.usi import (
     is_accession,
     ms_run_name,
     native_id_value,
+    normalize_ms_run,
     parse_usi,
     scan_number,
 )
@@ -83,6 +84,20 @@ def test_ms_run_name():
 )
 def test_scan_number(native_id, expected):
     assert scan_number(native_id) == expected
+
+
+@pytest.mark.parametrize(
+    "ms_run, expected",
+    [
+        ("run01", "run01"),
+        ("run01.mzML", "run01"),
+        ("run01.raw", "run01"),
+        ("peak/mzml_20230620_rt_ms2_positive/run01.mzML", "run01"),
+        ("run.01", "run.01"),
+    ],
+)
+def test_normalize_ms_run(ms_run, expected):
+    assert normalize_ms_run(ms_run) == expected
 
 
 def test_native_id_value():

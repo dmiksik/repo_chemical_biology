@@ -103,7 +103,7 @@ class SpectraPreviewer {
     const response = await fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const error = new Error(body.title || body.message || response.statusText);
+      const error = new Error(body.message || response.statusText);
       error.status = response.status;
       error.body = body;
       throw error;
